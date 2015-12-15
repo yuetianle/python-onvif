@@ -140,6 +140,11 @@ class onvif_host:
             logger.warning("user %s not exitst", username)
             user_content.text = 'False'
         out_data.append(ET.tostring(user_lists_node))
+    def reboot_device(self, out_data):
+        """device reboot"""
+        logger.debug(locals())
+        response = self.camera.devicemgmt.SystemReboot()
+        logger.debug(response)
 
 
 def register_device(device_id, ip, port, username, password):
@@ -189,7 +194,10 @@ def request_onvif_cmd(device_id, cmd, out_params = None, **in_params):
                     cmd_func(out_params)
                 elif out_params is None:
                     cmd_func()
+def request(uri, content=None):
+    """ 设备请求命令"""
 
+    pass
 if __name__ == '__main__':
     device_id = '172.16.1.221'
     ip = '172.16.1.221'
