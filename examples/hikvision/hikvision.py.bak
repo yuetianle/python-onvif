@@ -1,0 +1,5 @@
+#!/usr/bin/env python
+import device_plugins_hikvision
+
+if __name__ == '__main__':
+    print(dir(device_plugins_hikvision))

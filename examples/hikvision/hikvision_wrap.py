@@ -141,48 +141,25 @@ def get_stream_url(device_id, channel):
     print("inxml:", in_xml, "len:", in_xml_len)
     device_encode_ability_v20 = c_ulong(0x008)
     out_data = create_string_buffer(1024*10)
-    #out_data = c_char_p(1024*10)
     out_data_len = c_ulong(1024*10)
     ret = DllHandle.NET_DVR_GetDeviceAbility(login_session.session_id, device_encode_ability_v20, cast(in_xml, c_char_p), in_xml_len, out_data, out_data_len)
     hik_rtsp = rtspcfg()
     DllHandle.NET_DVR_GetRtspConfig(login_session.session_id, 0, byref(hik_rtsp), sizeof(rtspcfg))
     stream_urls = list()
     if ret:
-        """
-        test_logger.logger.debug("outdata:", out_data.value, "out_len:", out_data_len)
-        f = open('out_hik.xml', 'w')
-        f.write(out_data.value)
-        parse_data = str(out_data)
-        test_logger.logger.debug('parsertype:', type(parse_data), 'data:', parse_data)
-        """
         root_node = ET.fromstring(out_data.value)
         test_logger.logger.debug(root_node)
-        #Videoinfo = root_node.find('VideoCompressInfo')
         channel_lists = root_node.find('./VideoCompressInfo/ChannelList')
         for main_item in channel_lists.iter('ChannelEntry'):
             main_chan = main_item.find('MainChannel')
             channel_index = main_item.find('ChannelNumber')
             test_logger.logger.debug(channel_index.text)
-            #sub_chan_list = main_item.find('SubChannelList')
-            #all_sub_entry = sub_chan_list.findall('SubChannelEntry')
             if main_chan:
                 url_main = 'rtsp://' + str(login_session.ip) + ':' + str(hik_rtsp.wPort) + '/h264/ch' + channel_index.text + '/main/av_stream'
                 stream_urls.append(url_main)
             for sub_item in main_item.iter('SubChannelList'):
                 url_sub = 'rtsp://' + str(login_session.ip) + ':' + str(hik_rtsp.wPort) + '/h264/ch' + channel_index.text + '/sub/av_stream'
                 stream_urls.append(url_sub)
-        #all_entry = root_node.find('./VideoCompressInfo/ChannelList/ChannelEntry')
-        #test_logger.logger.debug(all_entry)
-        #for main_item in all_entry:
-        #    main_chan = main_item.find('MainChannel')
-        #    channel_index = main_chan.find('ChannelNumber')
-        #    sub_chan_list = main_item.find('SubChannelList')
-        #    all_sub_entry = sub_chan_list.findall('SubChannelEntry')
-        #    url_main = 'rtsp://' + str(login_session.ip) + ':' + str(hik_rtsp.wPort) + '/h264/ch' + str(channel_index) + '/main/av_stream'
-        #    for sub_item in all_sub_entry:
-        #        url_sub = 'rtsp://' + str(login_session.ip) + ':' + str(hik_rtsp.wPort) + '/h264/ch' + str(channel_index) + '/sub/av_stream'
-        #        stream_urls.append(url_sub)
-        #    stream_urls.append(url_main)
     else:
         test_logger.logger.debug("error")
     test_logger.logger.debug(stream_urls)
@@ -196,6 +173,7 @@ def get_stream_url(device_id, channel):
 
 def unregister_device(device_id):
     """ unregister a hikvision device"""
+
 
 if __name__ == '__main__':
     if sys.platform == 'win32':
