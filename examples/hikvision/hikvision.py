@@ -65,7 +65,7 @@ class uri_parser():
             self.params.pop(name)
         return self.params
 
-def request_hikvision_cmd(device_id, uri, params, out_params, out_params_len):
+def request_cmd(device_id, uri, params):
     """device cmd"""
     #dev_id =
     func_lists = dir(hikvision_wrap)
@@ -99,15 +99,9 @@ def request_hikvision_cmd(device_id, uri, params, out_params, out_params_len):
             out_data = cmd_func()
         """
         out_data = cmd_func(**cmd_params)
-        print("out_data:", out_data)
-        if out_params is None:
-            out_params = list()
-        if type(out_params) == list:
-            out_params.append(out_data)
-
-        out_params = out_data
-        out_params_len = len(out_data)
-    print(func_lists)
+        print("out_data:", out_data, "type:", type(out_data))
+        return out_data
+    #print(func_lists)
 if __name__ == '__main__':
     test_parser = uri_parser("http://admin:12345@172.16.1.221:8000/device/meida?func=register_device")
     print('user:', test_parser.user_name())
@@ -116,9 +110,10 @@ if __name__ == '__main__':
     print('func_params', test_parser.func_params('func'))
     print('ip', test_parser.ip())
     print('port', test_parser.port())
-    out_data = list()
-    out_params_len = long()
-    request_hikvision_cmd('111', "http://admin:12345@172.16.1.190:8000/device/meida?func=register_device", '', out_data, out_params_len)
-    request_hikvision_cmd('111', "http://172.16.1.190:8000/device/meida?func=get_stream_url&channel=1", '', out_data, out_params_len)
+    #out_data = list()
+    #out_params_len = long()
+    out_data = request_cmd('111', "http://admin:12345@172.16.1.190:8000/device/meida?func=register_device", '')
+    print('receive:', out_data)
+    out_data = request_cmd('111', "http://172.16.1.190:8000/device/meida?func=get_stream_url&channel=1", '')
     print('receive:', out_data)
 

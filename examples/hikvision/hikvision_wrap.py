@@ -9,7 +9,7 @@ except:
     import xml.etree.ElementTree as ET
 import test_logger
 if sys.platform == 'win32':
-    DLLHandle = windll
+    DllHandle = windll
 else:
     DllHandle = cdll
 Session = collections.namedtuple('Session', 'session_id ip port user pwd')
@@ -107,6 +107,8 @@ def load_dll(dll_name):
 
 def register_device(device_id, ip, port, user_name, user_pwd):
     """ register a hikvision device"""
+    if sys.platform == 'win32':
+        handle = load_dll('HCNetSDK')
     if not device_lists.has_key(device_id):
         global DllHandle
         #test_logger.logger.debug(DllHandle)
@@ -118,9 +120,9 @@ def register_device(device_id, ip, port, user_name, user_pwd):
         hik_login_info.wPort = port
         hik_login_info.sUserName = user_name
         hik_login_info.sPassword = user_pwd
-        login_id = handle.NET_DVR_Login_V40(pointer(hik_login_info), pointer(hik_device_info))
-        handle.NET_DVR_SetConnectTime(5000,3)
-        handle.NET_DVR_SetReconnect(5000,1)
+        login_id = DllHandle.NET_DVR_Login_V40(pointer(hik_login_info), pointer(hik_device_info))
+        DllHandle.NET_DVR_SetConnectTime(5000,3)
+        DllHandle.NET_DVR_SetReconnect(5000,1)
         login_session = Session(session_id=login_id, ip=ip, port=port, user=user_name, pwd=user_pwd)
         global device_lists
         device_lists[device_id] = login_session
@@ -168,9 +170,14 @@ def get_stream_url(device_id, channel):
         url = ET.SubElement(urls,'stream_url')
         url.text = item
     urls_xml = ET.tostring(urls, encoding='UTF-8', method='xml')
-    print('return:', urls_xml, 'type:', type(urls_xml))
-    return urls_xml
+    #urls_xml = ET.tostring(urls, encoding='us-ascii', method='xml')
+    #urls_xml = ET.tostring(urls)
+    print('return:', urls_xml, 'type:', type(urls_xml), 'len:', len(urls_xml), 'type:',type(len(urls_xml)))
+    return (urls_xml, len(urls_xml))
 
+def get_device_status(device_id, channel=None):
+    """"""
+    pass
 def unregister_device(device_id):
     """ unregister a hikvision device"""
 
@@ -180,6 +187,7 @@ if __name__ == '__main__':
         handle = load_dll('HCNetSDK')
         register_device('172.16.1.190','172.16.1.190', 8000, 'admin', '12345')
         get_stream_url('172.16.1.190', 0)
+
     #handle= WinDLL('HCNetSDK')
     #b_init = handle.NET_DVR_Init()
 
