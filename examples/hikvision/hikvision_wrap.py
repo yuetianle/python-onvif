@@ -90,6 +90,15 @@ class rtspcfg(Structure):
                 ('byReserve', c_ubyte*54)];
     def __str__(self):
         return '{0}:{1}'.format(self.dwSize, self.wPort)
+
+class dvr_point_frame(Structure):
+    _fields_ = [('xTop', c_int),
+                ('yTop', c_int),
+                ('xBottom', c_int),
+                ('yBottom', c_int),
+                ('bCounter', c_int)];
+    def __str__(self):
+        return '{0}:{1}:{2}:{3}{4}'.format(self.xTop, self.yTop, self.xBottom, self.yBottom, self.bCounter)
 def load_dll(dll_name):
     global DllHandle
     if sys.platform == 'win32':
@@ -107,10 +116,16 @@ def load_dll(dll_name):
 
 def register_device(device_id, ip, port, user_name, user_pwd):
     """ register a hikvision device"""
+    global DllHandle
+    global device_lists
     if sys.platform == 'win32':
-        handle = load_dll('HCNetSDK')
-    if not device_lists.has_key(device_id):
-        global DllHandle
+        DllHandle = load_dll('HCNetSDK')
+    #if not device_lists.has_key(device_id):
+    register_node = ET.Element('register')
+    ip_node = ET.SubElement(register_node, 'ip')
+    ip_node.text = ip
+    session_node = ET.SubElement(register_node, 'session')
+    if device_id not in device_lists:
         #test_logger.logger.debug(DllHandle)
         hik_login_info = login_info()
         hik_device_info = deviceinfo_v40()
@@ -124,10 +139,17 @@ def register_device(device_id, ip, port, user_name, user_pwd):
         DllHandle.NET_DVR_SetConnectTime(5000,3)
         DllHandle.NET_DVR_SetReconnect(5000,1)
         login_session = Session(session_id=login_id, ip=ip, port=port, user=user_name, pwd=user_pwd)
-        global device_lists
         device_lists[device_id] = login_session
-    print("id:", device_id, "loginsession:", device_lists.get(device_id))
-    return device_lists.get(device_id)
+        session_node.text = str(login_id)
+    else:
+        login_session = device_lists.get(device_id)
+        session_node.text = str(login_session.session_id)
+    session_xml = ET.tostring(register_node, encoding="UTF-8", method="xml")
+    print('device_lists:', device_lists)
+    #print("id:", device_id, "loginsession:", device_lists.get(device_id))
+    print('session_xml:', session_xml, 'type', type(session_xml), 'len:', len(session_xml), 'type:', type(len(session_xml)))
+    return (session_xml, len(session_xml))
+    #return device_lists.get(device_id)
 def get_stream_url(device_id, channel):
     global device_lists
     global DllHandle
@@ -176,15 +198,135 @@ def get_stream_url(device_id, channel):
     return (urls_xml, len(urls_xml))
 
 def get_device_status(device_id, channel=None):
-    """"""
-    pass
+    """ get device status"""
+    global device_lists
+    global DllHandle
+    if not device_lists.has_key(device_id):
+        return -1
+    if channel is None:
+        channel = c_ulong(0xffffffff)
+    login_session = device_lists.get(device_id)
+    tmp_time = time()
+    ret = c_ulong()
+    tmp_ret = DllHandle.NET_DVR_GetDVRConfig(login_session.session_id, 118, channel, pointer(tmp_time), sizeof(time),pointer(ret))
+    device_status = ET.Element('device_status')
+    if tmp_ret:
+        device_status.text = 'ture'
+    else:
+        device_status.text = 'false'
+    status_xml = ET.tostring(device_status, encoding='UTF-8', method='xml')
+    print('return:', status_xml, 'types:', type(status_xml), 'len:', len(status_xml), 'type:', type(len(status_xml)))
+    return (status_xml, len(status_xml))
 def unregister_device(device_id):
     """ unregister a hikvision device"""
 
 
+#class hik_ptz_direction:
+#    tilt_up   = 21
+#    tilt_down = 22
+#    pan_left  = 23
+#    pan_right = 24
+#    up_left   = 25
+#    up_right  = 26
+#    down_left = 27
+#    down_right = 28
+#
+hik_ptz_cmd_map = {21:'up', 22:'down', 23:'left', 24:'right', 25:'upleft', 26:'upright', 27:'downleft', 28:'downright'}
+#def ptz_move(device_id, channel, p, t, bstop=None):
+#    global device_lists
+#    global DllHandle
+#    if not device_lists.has_key(device_id):
+#        return -1
+#    login_session = device_lists.get(device_id)
+#    max_speed = 7
+#    pan_speed = int(abs(max_speed*p))
+#    tilt_speed = int(abs(max_speed*t))
+#    if abs(pan_speed) < abs(tilt_speed) and 0 < abs(pan_speed):
+#        speed = abs(pan_speed)
+#    else:
+#        speed = abs(tilt_speed)
+#    if p*t == 0:
+#        if p == 0 and t != 0:
+#            if t < 0:#down
+#                cmd = HIKMOVEDOWN
+#            else:#up
+#                cmd = HIKMOVEUP
+#        else if p != 0 and t == 0:
+#            if p < 0:#left
+#                cmd = HIKMOVELEFT
+#            else:#right
+#                cmd = HIKMOVERIGHT
+#    else
+#        if p > 0 and t > 0#rightup
+#            cmd = HIKMOVERIGHTUP
+#        else if p > 0 and t < 0#rightdown
+#            cmd = HIKMOVERIGHTDOWN
+#        else if p < 0 and t > 0#leftup
+#            cmd = HIKMOVELEFTUP
+#        else if p < 0 and t < 0#leftdown
+#            cmd = HIKMOVELEFTDOWN
+#    if 0 < len(device_id):
+#        if bstop is None:
+#            bstop = False
+#        if bstop:
+#            dwStop = 1
+#        else:
+#            dwStop = 0
+#        if 0 < speed and speed <= max_speed:
+#            ret = DllHandle.NET_DVR_PTZControlWithSpeed_Other(login_session.session_id, channel, direct, dwStop, speed)
+#        else:
+#            ret = DllHandle.NET_DVR_PTZControl_Other(login_session.session_id, channel, direct, dwStop)
+#    if ret:
+#        print('ptz move success, cmd:device_id:', device_id, 'p:', p, 't:', t, 'channel:', channel)
+#    else:
+#        print('ptz move fail, cmd:device_id:', device_id,'p:', p, 't:', t, 'channel:', channel)
+#    for
+#    move_node = ET.Element('ptz_move')
+#    move_node.set('cmd', '')
+
+
+#def ptz_3d(device_id, x, y, w, h, scale, channel):
+#    global device_lists
+#    global DllHandle
+#    print(local())
+#    if not device_lists.has_key(device_id):
+#        return -1
+#    login_session = device_lists.get(device_id)
+#    ptz_info = dvr_point_frame()
+#    memset(addressof(ptz_info), 0 , sizeof(dvr_point_frame))
+#    max_scale = 255
+#    px0 = int(x*max_scale)
+#    py0 = int(y*max_scale)
+#    px1 = int((x+w)*max_scale)
+#    py1 = int((y+h)*max_scale)
+#    if 0 <= scale:
+#        ptz_info.xTop = px0
+#        ptz_info.xBottom = px1
+#        ptz_info.yTop = py0
+#        ptz_info.yBottom = py1
+#        if px0 < px1:
+#            if py0 < py1:
+#                ptz_info.bCounter = 4
+#            else:
+#                ptz_info.bCounter = 2
+#    else:
+#        ptz_info.xTop = px1
+#        ptz_info.xBottom = px0
+#        ptz_info.yTop = py1
+#        ptz_info.yBottom = py0
+#        if py0 < py1:
+#            ptz_info.bCounter = 3
+#        else:
+#            ptz_info.bCounter = 1
+#    ret = DllHandle.NET_DVR_PTZSelZoomIn_Ex(login_session.session_id, channel, pointer(ptz_info))
+#    if ret:
+#        print('ptz_3d success')
+#    else:
+#        print('ptz_3d fail')
+
+
 if __name__ == '__main__':
     if sys.platform == 'win32':
-        handle = load_dll('HCNetSDK')
         register_device('172.16.1.190','172.16.1.190', 8000, 'admin', '12345')
         get_stream_url('172.16.1.190', 0)
 
